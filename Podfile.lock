@@ -1,0 +1,18 @@
+PODS:
+  - HTMLLabel (0.0.1)
+  - HTMLLabel/Tests (0.0.1)
+
+DEPENDENCIES:
+  - HTMLLabel (from `HTMLLabel.podspec`)
+  - HTMLLabel/Tests (from `HTMLLabel.podspec`)
+
+EXTERNAL SOURCES:
+  HTMLLabel:
+    :path: HTMLLabel.podspec
+
+SPEC CHECKSUMS:
+  HTMLLabel: dcb493485a88b958f04b2aaf280ac4ebd62cb22d
+
+PODFILE CHECKSUM: b37344dd7d9f8f23cd2aa1265d9f640b22f9369b
+
+COCOAPODS: 1.10.0
