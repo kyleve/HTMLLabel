@@ -49,8 +49,28 @@ extension HTML {
         }
         
         func toAttributed() -> NSAttributedString {
+            
+            guard self.children.isEmpty == false else {
+                return NSAttributedString()
+            }
+            
+            let base = NSMutableAttributedString()
+            
+            self.appendTo(attributed: base)
+            
+            return base
+        }
+        
+        private func appendTo(attributed string : NSMutableAttributedString) {
             fatalError()
         }
+    }
+}
+
+
+extension HTML  {
+    struct Format : Equatable {
+        var tagFormats : [Set<String> : Format]
     }
 }
 
@@ -58,7 +78,11 @@ extension HTML {
 extension HTML.Tag {
     
     struct Format : Equatable {
-        var attributes : [NSAttributedString.Key:AnyEquatable]
+        var attributes : [Key:AnyEquatable]
+        
+        enum Key : Hashable {
+            
+        }
     }
 }
 
