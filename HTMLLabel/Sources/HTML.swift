@@ -5,7 +5,7 @@
 //  Created by Kyle Van Essen on 12/24/20.
 //
 
-import Foundation
+import UIKit
 
 
 struct HTML : Equatable {
@@ -28,49 +28,63 @@ extension HTML {
             self.children = children
         }
         
-        static let rootName = "html-label-root"
-        
-        static func root(wrapping wrapped : () -> Tag) -> Tag {
-            Tag(name: self.rootName, children: [.tag(wrapped())])
-        }
-        
-        static func root(with children : () -> [Child]) -> Tag {
-            Tag(name: self.rootName, children: children())
-        }
-        
         var name : String
         var attributes : [String:String]?
         
         var children : [Child]
-        
+                
         enum Child : Equatable {
             case characters(String)
             case tag(Tag)
         }
         
-        func toAttributed() -> NSAttributedString {
-            
-            guard self.children.isEmpty == false else {
-                return NSAttributedString()
-            }
-            
-            let base = NSMutableAttributedString()
-            
-            self.appendTo(attributed: base)
-            
-            return base
-        }
-        
-        private func appendTo(attributed string : NSMutableAttributedString) {
-            fatalError()
+        struct Parent : Equatable {
+            var name : String
         }
     }
 }
 
 
+extension HTML.Tag {
+    static let rootName = "html-label-root"
+    
+    static func root(wrapping wrapped : () -> Self) -> Self {
+        Self(name: self.rootName, children: [.tag(wrapped())])
+    }
+    
+    static func root(with children : () -> [Child]) -> Self {
+        Self(name: self.rootName, children: children())
+    }
+}
+
+
+//
+// MARK: Formatting
+//
+
+
 extension HTML  {
     struct Format : Equatable {
-        var tagFormats : [Set<String> : Format]
+        var rootAttributes : RootFontAttributes
+        var tagFormats : [Set<TagName> : Format]
+        
+        struct TagName : Hashable {
+            
+            let name : String
+            
+            let synonyms : Set<String>
+            
+        }
+        
+        struct RootFontAttributes : Equatable {
+            var pointSize : CGFloat
+            var weight : UIFont.Weight
+        }
+        
+        struct FontAttributes : Equatable {
+            var pointSize : CGFloat?
+            var weight : UIFont.Weight?
+        }
     }
 }
 
@@ -78,28 +92,94 @@ extension HTML  {
 extension HTML.Tag {
     
     struct Format : Equatable {
-        var attributes : [Key:AnyEquatable]
+        private var attributes : [NSAttributedString.Key:AnyEquatable]
+        private var fontAttributes : HTML.Format.FontAttributes
         
-        enum Key : Hashable {
+        init(_ attributes : [NSAttributedString.Key:AnyEquatable]) {
+            self.attributes = attributes
+        }
+        
+        func toStringAttributes() -> [NSAttributedString.Key:Any] {
+            self.attributes.mapValues { $0.base }
+        }
+        
+        struct AnyEquatable : Equatable {
+
+            let base : Any
             
+            let isEqual : (Any) -> Bool
+            
+            init<Value:Equatable>(_ value : Value) {
+                self.base = value
+                
+                self.isEqual = { other in
+                    (other as? Value) == value
+                }
+            }
+            
+            static func == (lhs: AnyEquatable, rhs: AnyEquatable) -> Bool {
+                lhs.isEqual(rhs.base)
+            }
         }
     }
 }
 
 
-struct AnyEquatable : Equatable {
+//
+// MARK: To Attributed Strings
+//
+
+extension HTML.Tag {
     
-    let base : Any
-    
-    let isEqual : (Any) -> Bool
-    
-    init<Value:Equatable>(_ base : Value) {
-        self.base = base
+    func toAttributed(with format : HTML.Format) -> NSAttributedString {
         
-        self.isEqual = { ($0 as? Value) == base }
+        guard self.children.isEmpty == false else {
+            return NSAttributedString()
+        }
+        
+        let base = NSMutableAttributedString()
+        
+        self.appendTo(base, format: format, context: Context(parents: []))
+        
+        return base
     }
     
-    static func == (lhs : AnyEquatable, rhs : AnyEquatable) -> Bool {
-        lhs.isEqual(rhs.base)
+    private func appendTo(_ string : NSMutableAttributedString, format : HTML.Format, context : Context) {
+        
+        self.children.forEach {
+            let context = context.modified {
+                $0.parents.append(self.name)
+            }
+            
+            $0.appendTo(string, format: format, context: context)
+        }
+    }
+    
+    struct Context {
+        var parents : [String]
+        
+        func modified(_ block : (inout Context) -> ()) -> Self {
+            var copy = self
+            block(&copy)
+            return copy
+        }
     }
 }
+
+
+extension HTML.Tag.Child {
+    
+    func appendTo(_ string : NSMutableAttributedString, format : HTML.Format, context : HTML.Tag.Context) {
+        
+        switch self {
+        case .characters(let characters):
+            let attributed = NSAttributedString(string: characters, attributes: nil) // TODO
+            
+            string.append(attributed)
+            
+        case .tag(let tag):
+            tag.appendTo(string, format: format, context: context)
+        }
+    }
+}
+
